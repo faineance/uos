@@ -1,16 +1,19 @@
 bits 16
 org 0x07C00
-cli
+cli 
 
-; clear screen
-mov ax,0003h
-int 10h 
+call clear
+
+
 
 mov si, hello_world
 call puts
 
-hlt
+call getc
+call putc
 
+hlt
+halt: jmp halt
 
 puts:   ; DS:SI -> string to print 
         lodsb   ; assume: DF = 0 
@@ -20,11 +23,35 @@ puts:   ; DS:SI -> string to print
 putc:   ; al -> char to print
         mov     ah,0eh 
         xor     bh,bh 
-        int     10h 
+        int     10h ; int 29h ? (http://www.fysnet.net/undoc.htm)
   .ret: ret 
 
-hello_world   db 'Hello World', 0
+gets:
+        call getc
+        cmp al, 0x0D ;enter
+        je getc.ret
+        push gets
+getc:
+        xor ah, ah          
+        int  0x16
+        call putc           
+  .ret: ret 
 
-; ; fill remaining with 0, add magic
+reboot:
+  db 0x0ea
+  dw 0x0000
+  dw 0xffff
+
+clear:
+  mov ax,0003h
+  int 10h 
+  ret
+; 10 -> new line ascii
+; 13 -> carriage return
+%define NEWLINE 13, 10
+
+hello_world db NEWLINE, 'Hello World', NEWLINE, 0
+
+; fill remaining with 0, add magic
 TIMES 512-2 - ($ - $$) db 0
 DW 0xAA55
